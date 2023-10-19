@@ -77,6 +77,7 @@ class LIPM3D:
         self.vy_t = self.y_0/T_c*np.sinh(t/T_c) + self.vy_0*np.cosh(t/T_c)
 
     def calculateXtVt(self, t):
+        """ Calculate next step location """
         T_c = self.T_c
 
         x_t = self.x_0*np.cosh(t/T_c) + T_c*self.vx_0*np.sinh(t/T_c)
@@ -88,10 +89,10 @@ class LIPM3D:
         return x_t, vx_t, y_t, vy_t
 
     def nextReferenceFootLocation(self, s_x, s_y, theta=0):
-        if self.support_leg is 'left_leg': # then the next support leg is the right leg
+        if self.support_leg == 'left_leg': # then the next support leg is the right leg
             p_x_new = self.p_x + np.cos(theta)*s_x - np.sin(theta)*s_y
             p_y_new = self.p_y + np.sin(theta)*s_x + np.cos(theta)*s_y
-        elif self.support_leg is 'right_leg': # then the next support leg is the left leg
+        elif self.support_leg == 'right_leg': # then the next support leg is the left leg
             p_x_new = self.p_x + np.cos(theta)*s_x + np.sin(theta)*s_y
             p_y_new = self.p_y + np.sin(theta)*s_x - np.cos(theta)*s_y
 
@@ -101,10 +102,10 @@ class LIPM3D:
         '''
         Calculate next final state at T_sup
         '''
-        if self.support_leg is 'left_leg':
+        if self.support_leg == 'left_leg':
             bar_x_new = np.cos(theta)*s_x/2.0 - np.sin(theta)*s_y/2.0
             bar_y_new = np.sin(theta)*s_x/2.0 + np.cos(theta)*s_y/2.0
-        elif self.support_leg is 'right_leg':
+        elif self.support_leg == 'right_leg':
             bar_x_new = np.cos(theta)*s_x/2.0 + np.sin(theta)*s_y/2.0
             bar_y_new = np.sin(theta)*s_x/2.0 - np.cos(theta)*s_y/2.0
         return bar_x_new, bar_y_new
@@ -163,15 +164,19 @@ class LIPM3D:
         self.p_y_star = self.modifiedFootLocation(a, b, self.y_d, self.vy_d, y_0, vy_0)
         # print('-- p_x_star=%.3f'%self.p_x_star, ', p_y_star=%.3f'%self.p_y_star)
 
+    def calculateFootLocationForNextStepSimple(self, s_x=0.0, s_y=0.0, a=1.0, b=1.0, theta=0.0, x_0=0.0, vx_0=0.0, y_0=0.0, vy_0=0.0):
+        self.p_x_star = self.p_x + 0.4
+        self.p_y_star = -0.3 if self.support_leg == "left_leg" else 0.3
+
     def switchSupportLeg(self):
-        if self.support_leg is 'left_leg':
+        if self.support_leg == 'left_leg':
             print('\n---- switch the support leg to the right leg')
             self.support_leg = 'right_leg'
             COM_pos_x = self.x_t + self.left_foot_pos[0]
             COM_pos_y = self.y_t + self.left_foot_pos[1]
             self.x_0 = COM_pos_x - self.right_foot_pos[0]
             self.y_0 = COM_pos_y - self.right_foot_pos[1]
-        elif self.support_leg is 'right_leg':
+        elif self.support_leg == 'right_leg':
             print('\n---- switch the support leg to the left leg')
             self.support_leg = 'left_leg'
             COM_pos_x = self.x_t + self.right_foot_pos[0]
