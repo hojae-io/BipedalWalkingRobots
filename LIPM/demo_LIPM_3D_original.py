@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 
-from LIPM_3D import LIPM3D
+from LIPM_3D_original import LIPM3D
 
 class Ball:
     def __init__(self, size=10, shape='o'):
@@ -122,6 +122,9 @@ def ani_2D_update(i):
     return [COM_pos_ani, COM_traj_ani, left_foot_pos_ani, right_foot_pos_ani, ani_text_COM_pos, bx]
    
 
+
+
+
 # %% ---------------------------------------------------------------- LIPM control
 print('\n--------- Program start from here ...')
 
@@ -135,10 +138,8 @@ right_foot_pos_y = list()
 right_foot_pos_z = list()
 
 # Initialize the COM position and velocity
-# COM_pos_0 = [-0.4, 0.2, 1.0]
-# COM_v0 = [1.0, -0.01]
-COM_pos_0 = [0., 0., 1.0]
-COM_v0 = [1.0, 0.]
+COM_pos_0 = [-0.4, 0.2, 1.0]
+COM_v0 = [1.0, -0.01]
 
 # Initialize the foot positions
 left_foot_pos = [-0.2, 0.3, 0]
@@ -146,7 +147,7 @@ right_foot_pos = [0.2, -0.3, 0]
 
 delta_t = 0.02
 
-s_x = 0.5 # next reference foot location offset 
+s_x = 0.5
 s_y = 0.4
 a = 1.0
 b = 1.0
@@ -156,17 +157,17 @@ LIPM_model = LIPM3D(dt=delta_t, T_sup=0.5)
 LIPM_model.initializeModel(COM_pos_0, left_foot_pos, right_foot_pos)
 
 LIPM_model.support_leg = 'left_leg' # set the support leg to right leg in next step
-if LIPM_model.support_leg == 'left_leg':
+if LIPM_model.support_leg is 'left_leg':
     support_foot_pos = LIPM_model.left_foot_pos
-    LIPM_model.p_x = LIPM_model.left_foot_pos[0] # p: the support foot position in world frame
+    LIPM_model.p_x = LIPM_model.left_foot_pos[0]
     LIPM_model.p_y = LIPM_model.left_foot_pos[1]
 else:
     support_foot_pos = LIPM_model.right_foot_pos
     LIPM_model.p_x = LIPM_model.right_foot_pos[0]
     LIPM_model.p_y = LIPM_model.right_foot_pos[1]
 
-LIPM_model.x_0 = LIPM_model.COM_pos[0] - support_foot_pos[0] # origin is at the support foot
-LIPM_model.y_0 = LIPM_model.COM_pos[1] - support_foot_pos[1] 
+LIPM_model.x_0 = LIPM_model.COM_pos[0] - support_foot_pos[0]
+LIPM_model.y_0 = LIPM_model.COM_pos[1] - support_foot_pos[1]
 LIPM_model.vx_0 = COM_v0[0]
 LIPM_model.vy_0 = COM_v0[1]
 
@@ -184,11 +185,10 @@ switch_index = swing_data_len
 for i in range(int(total_time/delta_t)):
     global_time += delta_t
 
-    # Update body (CoM) state: x_t, vx_t, y_t, vy_t
     LIPM_model.step()
 
     if step_num >= 1:
-        if LIPM_model.support_leg == 'left_leg':
+        if LIPM_model.support_leg is 'left_leg':
             LIPM_model.right_foot_pos = [swing_foot_pos[j,0], swing_foot_pos[j,1], swing_foot_pos[j,2]]
         else:
             LIPM_model.left_foot_pos = [swing_foot_pos[j,0], swing_foot_pos[j,1], swing_foot_pos[j,2]]
@@ -209,11 +209,10 @@ for i in range(int(total_time/delta_t)):
     if (i > 0) and (i % switch_index == 0):
         j = 0
 
-        # Switch the support leg / Update current body state (self.x_0, self.y_0, self.vx_0, self.vy_0)
-        LIPM_model.switchSupportLeg() 
+        LIPM_model.switchSupportLeg() # switch the support leg
         step_num += 1
 
-        # theta -= 0.4 # set zero for walking forward, set non-zero for turn left and right
+        # theta -= 0.04 # set zero for walking forward, set non-zero for turn left and right
 
         if step_num >= 5: # stop forward after 5 steps
             s_x = 0.0
@@ -221,8 +220,8 @@ for i in range(int(total_time/delta_t)):
         if step_num >= 10:
             s_y = 0.0
 
-        if LIPM_model.support_leg == 'left_leg':
-            support_foot_pos = LIPM_model.left_foot_pos # support foot position in world frame
+        if LIPM_model.support_leg is 'left_leg':
+            support_foot_pos = LIPM_model.left_foot_pos
             LIPM_model.p_x = LIPM_model.left_foot_pos[0]
             LIPM_model.p_y = LIPM_model.left_foot_pos[1]
         else:
@@ -230,23 +229,21 @@ for i in range(int(total_time/delta_t)):
             LIPM_model.p_x = LIPM_model.right_foot_pos[0]
             LIPM_model.p_y = LIPM_model.right_foot_pos[1]
 
-        # Calculate the initial body state of the next step (= final body state of the current step)
-        x_0_next, vx_next, y_0_next, vy_next = LIPM_model.calculateXtVt(LIPM_model.T_sup)
-
-        if LIPM_model.support_leg == 'left_leg':
-            x_0_next = x_0_next + LIPM_model.left_foot_pos[0] # need the absolute position for next step
-            y_0_next = y_0_next + LIPM_model.left_foot_pos[1] # need the absolute position for next step
-        else:
-            x_0_next = x_0_next + LIPM_model.right_foot_pos[0] # need the absolute position for next step
-            y_0_next = y_0_next + LIPM_model.right_foot_pos[1] # need the absolute position for next step
-
         # calculate the next foot locations, with modification, stable
-        # LIPM_model.calculateFootLocationForNextStep(s_x, s_y, a, b, theta, x_0_next, vx_next, y_0_next, vy_next)
-        LIPM_model.calculateFootLocationForNextStepXcoM()
+        x_0, vx_0, y_0, vy_0 = LIPM_model.calculateXtVt(LIPM_model.T_sup) # calculate the xt and yt as the initial state for next step
+
+        if LIPM_model.support_leg is 'left_leg':
+            x_0 = x_0 + LIPM_model.left_foot_pos[0] # need the absolute position for next step
+            y_0 = y_0 + LIPM_model.left_foot_pos[1] # need the absolute position for next step
+        else:
+            x_0 = x_0 + LIPM_model.right_foot_pos[0] # need the absolute position for next step
+            y_0 = y_0 + LIPM_model.right_foot_pos[1] # need the absolute position for next step
+
+        LIPM_model.calculateFootLocationForNextStep(s_x, s_y, a, b, theta, x_0, vx_0, y_0, vy_0)
         # print('p_star=', LIPM_model.p_x_star, LIPM_model.p_y_star)
 
         # calculate the foot positions for swing phase
-        if LIPM_model.support_leg == 'left_leg':
+        if LIPM_model.support_leg is 'left_leg':
             right_foot_target_pos = [LIPM_model.p_x_star, LIPM_model.p_y_star, 0]
             swing_foot_pos[:,0] = np.linspace(LIPM_model.right_foot_pos[0], right_foot_target_pos[0], swing_data_len)
             swing_foot_pos[:,1] = np.linspace(LIPM_model.right_foot_pos[1], right_foot_target_pos[1], swing_data_len)

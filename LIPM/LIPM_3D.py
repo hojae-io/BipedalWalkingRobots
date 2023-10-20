@@ -56,119 +56,43 @@ class LIPM3D:
         self.right_foot_pos = right_foot_pos
 
         self.zc = self.COM_pos[2]
-        self.T_c = np.sqrt(self.zc / 9.81) # set gravity parameter as 9.81
-        self.C = np.cosh(self.T_sup/self.T_c)
-        self.S = np.sinh(self.T_sup/self.T_c)
+        self.w_0 = np.sqrt(self.zc / 9.81) # set gravity parameter as 9.81 = w_0
+        self.C = np.cosh(self.T_sup/self.w_0)
+        self.S = np.sinh(self.T_sup/self.w_0)
     
     def updateParameters(self, T_sup):
         self.T_sup = T_sup
-        self.C = np.cosh(self.T_sup/self.T_c)
-        self.S = np.sinh(self.T_sup/self.T_c)
+        self.C = np.cosh(self.T_sup/self.w_0)
+        self.S = np.sinh(self.T_sup/self.w_0)
 
     def step(self):
         self.t += self.dt
         t = self.t
-        T_c = self.T_c
+        w_0 = self.w_0
 
-        self.x_t = self.x_0*np.cosh(t/T_c) + T_c*self.vx_0*np.sinh(t/T_c)
-        self.vx_t = self.x_0/T_c*np.sinh(t/T_c) + self.vx_0*np.cosh(t/T_c)
+        self.x_t = self.x_0*np.cosh(t/w_0) + w_0*self.vx_0*np.sinh(t/w_0)
+        self.vx_t = self.x_0/w_0*np.sinh(t/w_0) + self.vx_0*np.cosh(t/w_0)
 
-        self.y_t = self.y_0*np.cosh(t/T_c) + T_c*self.vy_0*np.sinh(t/T_c)
-        self.vy_t = self.y_0/T_c*np.sinh(t/T_c) + self.vy_0*np.cosh(t/T_c)
+        self.y_t = self.y_0*np.cosh(t/w_0) + w_0*self.vy_0*np.sinh(t/w_0)
+        self.vy_t = self.y_0/w_0*np.sinh(t/w_0) + self.vy_0*np.cosh(t/w_0)
 
     def calculateXtVt(self, t):
         """ Calculate next step location """
-        T_c = self.T_c
+        w_0 = self.w_0
 
-        x_t = self.x_0*np.cosh(t/T_c) + T_c*self.vx_0*np.sinh(t/T_c)
-        vx_t = self.x_0/T_c*np.sinh(t/T_c) + self.vx_0*np.cosh(t/T_c)
+        x_t = self.x_0*np.cosh(t/w_0) + w_0*self.vx_0*np.sinh(t/w_0)
+        vx_t = self.x_0/w_0*np.sinh(t/w_0) + self.vx_0*np.cosh(t/w_0)
 
-        y_t = self.y_0*np.cosh(t/T_c) + T_c*self.vy_0*np.sinh(t/T_c)
-        vy_t = self.y_0/T_c*np.sinh(t/T_c) + self.vy_0*np.cosh(t/T_c)
+        y_t = self.y_0*np.cosh(t/w_0) + w_0*self.vy_0*np.sinh(t/w_0)
+        vy_t = self.y_0/w_0*np.sinh(t/w_0) + self.vy_0*np.cosh(t/w_0)
 
         return x_t, vx_t, y_t, vy_t
 
-    def nextReferenceFootLocation(self, s_x, s_y, theta=0):
-        if self.support_leg == 'left_leg': # then the next support leg is the right leg
-            p_x_new = self.p_x + np.cos(theta)*s_x - np.sin(theta)*s_y
-            p_y_new = self.p_y + np.sin(theta)*s_x + np.cos(theta)*s_y
-        elif self.support_leg == 'right_leg': # then the next support leg is the left leg
-            p_x_new = self.p_x + np.cos(theta)*s_x + np.sin(theta)*s_y
-            p_y_new = self.p_y + np.sin(theta)*s_x - np.cos(theta)*s_y
-
-        return p_x_new, p_y_new
-
-    def nextState(self, s_x, s_y, theta=0):
-        '''
-        Calculate next final state at T_sup
-        '''
-        if self.support_leg == 'left_leg':
-            bar_x_new = np.cos(theta)*s_x/2.0 - np.sin(theta)*s_y/2.0
-            bar_y_new = np.sin(theta)*s_x/2.0 + np.cos(theta)*s_y/2.0
-        elif self.support_leg == 'right_leg':
-            bar_x_new = np.cos(theta)*s_x/2.0 + np.sin(theta)*s_y/2.0
-            bar_y_new = np.sin(theta)*s_x/2.0 - np.cos(theta)*s_y/2.0
-        return bar_x_new, bar_y_new
-
-    def nextVel(self, bar_x=0, bar_y=0, theta=0):
-        C = self.C
-        S = self.S
-        T_c = self.T_c
-
-        bar_vx_new = np.cos(theta)*(1+C)/(T_c*S)*bar_x - np.sin(theta)*(C-1)/(T_c*S)*bar_y
-        bar_vy_new = np.sin(theta)*(1+C)/(T_c*S)*bar_x + np.cos(theta)*(C-1)/(T_c*S)*bar_y
-
-        return bar_vx_new, bar_vy_new
-
-    def targetState(self, p_x, bar_x, bar_vx):
-        x_d = p_x + bar_x
-        vx_d = bar_vx
-
-        return x_d, vx_d
-    
-    def modifiedFootLocation(self, a=1.0, b=1.0, x_d=0, vx_d=0, x_0=0, vx_0=0):
-        C = self.C
-        S = self.S
-        T_c = self.T_c
-        D = a*(C - 1)**2 + b*(S/T_c)**2
-
-        p_x_star = -a*(C-1)*(x_d - C*x_0 - T_c*S*vx_0)/D - b*S*(vx_d - S*x_0/T_c - C*vx_0)/(T_c*D)
-
-        return p_x_star
-
-    def calculateFootLocationForNextStep(self, s_x=0.0, s_y=0.0, a=1.0, b=1.0, theta=0.0, x_0=0.0, vx_0=0.0, y_0=0.0, vy_0=0.0):
-        self.s_x = s_x
-        self.s_y = s_y
-
-        # ----------------------------- calculate desired COM states and foot locations for the given s_x, s_y and theta
-        # calculate desired foot locations
-        print(self.p_x, self.p_y)
-        p_x_new, p_y_new = self.nextReferenceFootLocation(s_x, s_y, theta)
-        # print('-- p_x_new=%.3f'%p_x_new, ', p_y_new=%.3f'%p_y_new)
-
-        # calculate desired COM states
-        bar_x, bar_y = self.nextState(s_x, s_y, theta)
-        bar_vx, bar_vy = self.nextVel(bar_x, bar_y, theta)
-        # print('-- bar_x=%.3f'%bar_x, ', bar_y=%.3f'%bar_y)
-        # print('-- bar_vx=%.3f'%bar_vx, ', bar_vy=%.3f'%bar_vy)
-
-        # calculate target COM state in the next step
-        self.x_d, self.vx_d = self.targetState(p_x_new, bar_x, bar_vx)
-        self.y_d, self.vy_d = self.targetState(p_y_new, bar_y, bar_vy)
-        # print('-- x_d=%.3f'%self.x_d, ', vx_d=%.3f'%self.vx_d)
-        # print('-- y_d=%.3f'%self.y_d, ', vy_d=%.3f'%self.vy_d)
-
-        # ----------------------------- calculate modified foot locations based on the current actual COM states
-        # correct the modified foot locations to minimize the errors
-        self.p_x_star = self.modifiedFootLocation(a, b, self.x_d, self.vx_d, x_0, vx_0)
-        self.p_y_star = self.modifiedFootLocation(a, b, self.y_d, self.vy_d, y_0, vy_0)
-        # print('-- p_x_star=%.3f'%self.p_x_star, ', p_y_star=%.3f'%self.p_y_star)
-
     def calculateFootLocationForNextStepXcoM(self, s=0.5, w=0.4): # s: desired step length, w: desired step width
-        ICP_x = self.x_t + self.vx_t*self.T_c
-        ICP_y = self.y_t + self.vy_t*self.T_c
-        b_x = s / (np.exp(self.T_sup/self.T_c) - 1)
-        b_y = w / (np.exp(self.T_sup/self.T_c) + 1)
+        ICP_x = self.x_t + self.vx_t*self.w_0
+        ICP_y = self.y_t + self.vy_t*self.w_0
+        b_x = s / (np.exp(self.T_sup/self.w_0) - 1)
+        b_y = w / (np.exp(self.T_sup/self.w_0) + 1)
         # self.p_x_star = self.p_x + 0.4
         self.p_x_star = ICP_x - b_x
         self.p_y_star = ICP_y + b_y if self.support_leg == "left_leg" else ICP_y - b_y
