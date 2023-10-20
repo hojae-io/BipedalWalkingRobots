@@ -138,9 +138,10 @@ right_foot_pos_y = list()
 right_foot_pos_z = list()
 
 # Initialize the COM position and velocity
-COM_pos_0 = [-0.4, 0.2, 1.0]
-COM_v0 = [1.0, -0.01]
-COM_v0 = [1.9, 0.]
+# COM_pos_0 = [-0.4, 0.2, 1.0]
+# COM_v0 = [1.0, -0.01]
+COM_pos_0 = [0., 0., 1.0]
+COM_v0 = [1.0, 0.]
 
 # Initialize the foot positions
 left_foot_pos = [-0.2, 0.3, 0]
@@ -243,8 +244,8 @@ for i in range(int(total_time/delta_t)):
             y_0_next = y_0_next + LIPM_model.right_foot_pos[1] # need the absolute position for next step
 
         # calculate the next foot locations, with modification, stable
-        LIPM_model.calculateFootLocationForNextStep(s_x, s_y, a, b, theta, x_0_next, vx_next, y_0_next, vy_next)
-        # LIPM_model.calculateFootLocationForNextStepSimple(s_x, s_y, a, b, theta, x_0_next, vx_next, y_0_next, vy_next)
+        # LIPM_model.calculateFootLocationForNextStep(s_x, s_y, a, b, theta, x_0_next, vx_next, y_0_next, vy_next)
+        LIPM_model.calculateFootLocationForNextStepXcoM()
         # print('p_star=', LIPM_model.p_x_star, LIPM_model.p_y_star)
 
         # calculate the foot positions for swing phase

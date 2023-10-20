@@ -164,9 +164,17 @@ class LIPM3D:
         self.p_y_star = self.modifiedFootLocation(a, b, self.y_d, self.vy_d, y_0, vy_0)
         # print('-- p_x_star=%.3f'%self.p_x_star, ', p_y_star=%.3f'%self.p_y_star)
 
-    def calculateFootLocationForNextStepSimple(self, s_x=0.0, s_y=0.0, a=1.0, b=1.0, theta=0.0, x_0=0.0, vx_0=0.0, y_0=0.0, vy_0=0.0):
-        self.p_x_star = self.p_x + 0.4
-        self.p_y_star = -0.3 if self.support_leg == "left_leg" else 0.3
+    def calculateFootLocationForNextStepXcoM(self, s=0.5, w=0.4): # s: desired step length, w: desired step width
+        ICP_x = self.x_t + self.vx_t*self.T_c
+        ICP_y = self.y_t + self.vy_t*self.T_c
+        b_x = s / (np.exp(self.T_sup/self.T_c) - 1)
+        b_y = w / (np.exp(self.T_sup/self.T_c) + 1)
+        # self.p_x_star = self.p_x + 0.4
+        self.p_x_star = ICP_x - b_x
+        self.p_y_star = ICP_y + b_y if self.support_leg == "left_leg" else ICP_y - b_y
+
+        return self.p_x_star, self.p_y_star
+        # self.p_y_star = -0.3 if self.support_leg == "left_leg" else 0.3
 
     def switchSupportLeg(self):
         if self.support_leg == 'left_leg':
