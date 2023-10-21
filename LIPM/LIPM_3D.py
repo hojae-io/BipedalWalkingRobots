@@ -5,21 +5,16 @@ import numpy as np
 class LIPM3D:
     def __init__(self,
                  dt=0.001,
-                 T_sup=1.0,
+                 T=1.0,
                  support_leg='left_leg'):
         self.dt = dt
         self.t = 0
-        self.T_sup = T_sup # support time
-
-        self.p_x = 0  # desired foot location x
-        self.p_y = 0  # desired foot location y
-
-        self.p_x_star = 0 # modified foot location x
-        self.p_y_star = 0 # modified foot location y
-
-        # Initialize the gait parameters
-        self.s_x = 0.0
-        self.s_y = 0.0
+        self.T = T # step time
+        self.s_c = 0.0 # desired step length
+        self.T_c = 0.0 # desired step duration
+        
+        self.u_x = 0 # step location x
+        self.u_y = 0 # step location y
 
         # COM initial state
         self.x_0 = 0
@@ -39,12 +34,6 @@ class LIPM3D:
         self.y_d = 0
         self.vy_d = 0
 
-        # final state for one gait unit
-        self.bar_x = 0.0
-        self.bar_y = 0.0
-        self.bar_vx = 0.0
-        self.bar_vy = 0.0
-
         self.support_leg = support_leg
         self.left_foot_pos = [0.0, 0.0, 0.0]
         self.right_foot_pos = [0.0, 0.0, 0.0]
@@ -57,14 +46,7 @@ class LIPM3D:
 
         self.zc = self.COM_pos[2]
         self.w_0 = np.sqrt(self.zc / 9.81) # set gravity parameter as 9.81 = w_0
-        self.C = np.cosh(self.T_sup/self.w_0)
-        self.S = np.sinh(self.T_sup/self.w_0)
     
-    def updateParameters(self, T_sup):
-        self.T_sup = T_sup
-        self.C = np.cosh(self.T_sup/self.w_0)
-        self.S = np.sinh(self.T_sup/self.w_0)
-
     def step(self):
         self.t += self.dt
         t = self.t
@@ -76,29 +58,25 @@ class LIPM3D:
         self.y_t = self.y_0*np.cosh(t/w_0) + w_0*self.vy_0*np.sinh(t/w_0)
         self.vy_t = self.y_0/w_0*np.sinh(t/w_0) + self.vy_0*np.cosh(t/w_0)
 
-    def calculateXtVt(self, t):
+    def calculateXtVt(self):
         """ Calculate next step location """
         w_0 = self.w_0
 
-        x_t = self.x_0*np.cosh(t/w_0) + w_0*self.vx_0*np.sinh(t/w_0)
-        vx_t = self.x_0/w_0*np.sinh(t/w_0) + self.vx_0*np.cosh(t/w_0)
+        x_t = self.x_0*np.cosh(self.T/w_0) + w_0*self.vx_0*np.sinh(self.T/w_0)
+        vx_t = self.x_0/w_0*np.sinh(self.T/w_0) + self.vx_0*np.cosh(self.T/w_0)
 
-        y_t = self.y_0*np.cosh(t/w_0) + w_0*self.vy_0*np.sinh(t/w_0)
-        vy_t = self.y_0/w_0*np.sinh(t/w_0) + self.vy_0*np.cosh(t/w_0)
+        y_t = self.y_0*np.cosh(self.T/w_0) + w_0*self.vy_0*np.sinh(self.T/w_0)
+        vy_t = self.y_0/w_0*np.sinh(self.T/w_0) + self.vy_0*np.cosh(self.T/w_0)
 
         return x_t, vx_t, y_t, vy_t
 
     def calculateFootLocationForNextStepXcoM(self, s=0.5, w=0.4): # s: desired step length, w: desired step width
         ICP_x = self.x_t + self.vx_t*self.w_0
         ICP_y = self.y_t + self.vy_t*self.w_0
-        b_x = s / (np.exp(self.T_sup/self.w_0) - 1)
-        b_y = w / (np.exp(self.T_sup/self.w_0) + 1)
-        # self.p_x_star = self.p_x + 0.4
-        self.p_x_star = ICP_x - b_x
-        self.p_y_star = ICP_y + b_y if self.support_leg == "left_leg" else ICP_y - b_y
-
-        return self.p_x_star, self.p_y_star
-        # self.p_y_star = -0.3 if self.support_leg == "left_leg" else 0.3
+        b_x = s / (np.exp(self.T/self.w_0) - 1)
+        b_y = w / (np.exp(self.T/self.w_0) + 1)
+        self.u_x = ICP_x - b_x
+        self.u_y = ICP_y + b_y if self.support_leg == "left_leg" else ICP_y - b_y
 
     def switchSupportLeg(self):
         if self.support_leg == 'left_leg':
