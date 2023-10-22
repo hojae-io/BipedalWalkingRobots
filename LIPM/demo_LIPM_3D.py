@@ -138,7 +138,7 @@ right_foot_pos_z = list()
 # COM_pos_0 = [-0.4, 0.2, 1.0]
 # COM_v0 = [1.0, -0.01]
 COM_pos_0 = [0., 0., 1.0]
-COM_v0 = [1.0, 0.]
+COM_v0 = [2.0, 0.]
 
 left_foot_pos = [-0.2, 0.3, 0]
 right_foot_pos = [-0.2, -0.3, 0]
@@ -162,7 +162,7 @@ swing_foot_pos = np.zeros((swing_data_len, 3))
 j = 0
 
 # Calculate the next step locations
-LIPM_model.calculateFootLocationForNextStepXcoM()
+LIPM_model.calculateFootLocationForNextStepXcoM(step_num=1)
 
 # Calculate the foot positions for swing phase
 if LIPM_model.support_leg == 'left_leg':
@@ -177,6 +177,7 @@ else:
     swing_foot_pos[1:swing_data_len-1, 2] = 0.1
 
 total_time = 30 # seconds
+step_num = 0
 
 for i in range(1, int(total_time/LIPM_model.dt)):
 
@@ -206,9 +207,10 @@ for i in range(1, int(total_time/LIPM_model.dt)):
 
         # Switch the support leg / Update current body state (self.x_0, self.y_0, self.vx_0, self.vy_0)
         LIPM_model.switchSupportLeg() 
+        step_num += 1
 
         # Calculate the next step locations
-        LIPM_model.calculateFootLocationForNextStepXcoM()
+        LIPM_model.calculateFootLocationForNextStepXcoM(step_num)
 
         # calculate the foot positions for swing phase
         if LIPM_model.support_leg == 'left_leg':

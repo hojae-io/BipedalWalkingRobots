@@ -73,7 +73,7 @@ class LIPM3D:
 
         return x_f, vx_f, y_f, vy_f
 
-    def calculateFootLocationForNextStepXcoM(self):
+    def calculateFootLocationForNextStepXcoM(self, step_num):
         x_f, vx_f, y_f, vy_f = self.calculateXfVf()
         x_f_world = x_f + self.support_foot_pos[0]
         y_f_world = y_f + self.support_foot_pos[1]
@@ -81,8 +81,20 @@ class LIPM3D:
         ICP_y = y_f_world + vy_f/self.w_0
         b_x = self.s_d / (np.exp(self.w_0*self.T_d) - 1)
         b_y = self.w_d / (np.exp(self.w_0*self.T_d) + 1)
-        self.u_x = ICP_x - b_x
-        self.u_y = ICP_y - b_y if self.support_leg == "left_leg" else ICP_y + b_y
+
+        offset_x = -b_x
+        offset_y = -b_y if self.support_leg == "left_leg" else b_y 
+
+        TURN = True if step_num >= 5 else False
+        theta = -np.pi/2
+        if TURN:
+            old_offset_x = np.copy(offset_x)
+            old_offset_y = np.copy(offset_y)
+            offset_x = np.cos(theta) * old_offset_x - np.sin(theta) * old_offset_y
+            offset_y = np.sin(theta) * old_offset_x + np.cos(theta) * old_offset_y
+
+        self.u_x = ICP_x + offset_x
+        self.u_y = ICP_y + offset_y
 
     def switchSupportLeg(self):
         if self.support_leg == 'left_leg':
