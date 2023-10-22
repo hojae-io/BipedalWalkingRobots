@@ -134,52 +134,37 @@ right_foot_pos_x = list()
 right_foot_pos_y = list()
 right_foot_pos_z = list()
 
-# Initialize the COM position and velocity
+# Initialize the 3D LIPM (with initial COM position, velocity and foot position)
 # COM_pos_0 = [-0.4, 0.2, 1.0]
 # COM_v0 = [1.0, -0.01]
 COM_pos_0 = [0., 0., 1.0]
 COM_v0 = [1.0, 0.]
 
-# Initialize the foot positions
 left_foot_pos = [-0.2, 0.3, 0]
-# right_foot_pos = [0.2, -0.3, 0]
-right_foot_pos = [-0.2, 0.3, 0]
+right_foot_pos = [-0.2, -0.3, 0]
 
-delta_t = 0.02
-
-LIPM_model = LIPM3D(dt=delta_t, T=0.5)
+LIPM_model = LIPM3D(dt=0.02, T=0.2, s_d=0.5, w_d=0.4, support_leg='left_leg')
+# LIPM_model = LIPM3D(dt=0.02, T=0.5, support_leg='right_leg')
 LIPM_model.initializeModel(COM_pos_0, left_foot_pos, right_foot_pos)
 
-LIPM_model.support_leg = 'left_leg' # set the support leg to right leg in next step
-if LIPM_model.support_leg == 'left_leg':
-    support_foot_pos = LIPM_model.left_foot_pos
-else:
-    support_foot_pos = LIPM_model.right_foot_pos
-
-LIPM_model.x_0 = LIPM_model.COM_pos[0] - support_foot_pos[0] # origin is at the support foot
-LIPM_model.y_0 = LIPM_model.COM_pos[1] - support_foot_pos[1] 
+LIPM_model.x_0 = LIPM_model.COM_pos[0] - LIPM_model.support_foot_pos[0] # origin is at the support foot
+LIPM_model.y_0 = LIPM_model.COM_pos[1] - LIPM_model.support_foot_pos[1] 
 LIPM_model.vx_0 = COM_v0[0]
 LIPM_model.vy_0 = COM_v0[1]
 
-LIPM_model.x_t = LIPM_model.x_0 # FIXME: 
+LIPM_model.x_t = LIPM_model.x_0 
 LIPM_model.y_t = LIPM_model.y_0
 LIPM_model.vx_t = LIPM_model.vx_0
 LIPM_model.vy_t = LIPM_model.vy_0
 
-step_num = 0
-total_time = 30 # seconds
-global_time = 0
-
-swing_data_len = int(LIPM_model.T/delta_t)
+swing_data_len = int(LIPM_model.T/LIPM_model.dt)
 swing_foot_pos = np.zeros((swing_data_len, 3))
 j = 0
 
-switch_index = swing_data_len
-
-# Calculate the next step locations # FIXME
+# Calculate the next step locations
 LIPM_model.calculateFootLocationForNextStepXcoM()
 
-# calculate the foot positions for swing phase
+# Calculate the foot positions for swing phase
 if LIPM_model.support_leg == 'left_leg':
     right_foot_target_pos = [LIPM_model.u_x, LIPM_model.u_y, 0]
     swing_foot_pos[:,0] = np.linspace(LIPM_model.right_foot_pos[0], right_foot_target_pos[0], swing_data_len)
@@ -191,22 +176,22 @@ else:
     swing_foot_pos[:,1] = np.linspace(LIPM_model.left_foot_pos[1], left_foot_target_pos[1], swing_data_len)
     swing_foot_pos[1:swing_data_len-1, 2] = 0.1
 
-for i in range(int(total_time/delta_t)):
-    global_time += delta_t
+total_time = 30 # seconds
+
+for i in range(1, int(total_time/LIPM_model.dt)):
 
     # Update body (CoM) state: x_t, vx_t, y_t, vy_t
     LIPM_model.step()
 
-    if step_num >= 1:
-        if LIPM_model.support_leg == 'left_leg':
-            LIPM_model.right_foot_pos = [swing_foot_pos[j,0], swing_foot_pos[j,1], swing_foot_pos[j,2]]
-        else:
-            LIPM_model.left_foot_pos = [swing_foot_pos[j,0], swing_foot_pos[j,1], swing_foot_pos[j,2]]
-        j += 1
+    if LIPM_model.support_leg == 'left_leg':
+        LIPM_model.right_foot_pos = [swing_foot_pos[j,0], swing_foot_pos[j,1], swing_foot_pos[j,2]]
+    else:
+        LIPM_model.left_foot_pos = [swing_foot_pos[j,0], swing_foot_pos[j,1], swing_foot_pos[j,2]]
+    j += 1
 
     # record data
-    COM_pos_x.append(LIPM_model.x_t + support_foot_pos[0])
-    COM_pos_y.append(LIPM_model.y_t + support_foot_pos[1])
+    COM_pos_x.append(LIPM_model.x_t + LIPM_model.support_foot_pos[0])
+    COM_pos_y.append(LIPM_model.y_t + LIPM_model.support_foot_pos[1])
     left_foot_pos_x.append(LIPM_model.left_foot_pos[0])
     left_foot_pos_y.append(LIPM_model.left_foot_pos[1])
     left_foot_pos_z.append(LIPM_model.left_foot_pos[2])
@@ -216,28 +201,11 @@ for i in range(int(total_time/delta_t)):
 
 
     # switch the support leg
-    if (i > 0) and (i % switch_index == 0):
-    # if (i % switch_index == 0):
+    if (i % swing_data_len == 0):
         j = 0
 
         # Switch the support leg / Update current body state (self.x_0, self.y_0, self.vx_0, self.vy_0)
         LIPM_model.switchSupportLeg() 
-        step_num += 1
-
-        if LIPM_model.support_leg == 'left_leg':
-            support_foot_pos = LIPM_model.left_foot_pos # support foot position in world frame
-        else:
-            support_foot_pos = LIPM_model.right_foot_pos
-
-        # Calculate the initial body state of the next step (= final body state of the current step)
-        x_0_next, vx_next, y_0_next, vy_next = LIPM_model.calculateXtVt()
-
-        if LIPM_model.support_leg == 'left_leg':
-            x_0_next = x_0_next + LIPM_model.left_foot_pos[0] # need the absolute position for next step
-            y_0_next = y_0_next + LIPM_model.left_foot_pos[1] # need the absolute position for next step
-        else:
-            x_0_next = x_0_next + LIPM_model.right_foot_pos[0] # need the absolute position for next step
-            y_0_next = y_0_next + LIPM_model.right_foot_pos[1] # need the absolute position for next step
 
         # Calculate the next step locations
         LIPM_model.calculateFootLocationForNextStepXcoM()
@@ -274,7 +242,7 @@ ax.set_zlabel('z (m)')
 # view angles
 ax.view_init(20, -150)
 LIPM_3D_ani = LIPM_3D_Animate()
-ani_3D = FuncAnimation(fig, ani_3D_update, frames=range(1, data_len), init_func=ani_3D_init, interval=1.0/delta_t, blit=True, repeat=True)
+ani_3D = FuncAnimation(fig, ani_3D_update, frames=range(1, data_len), init_func=ani_3D_init, interval=1.0/LIPM_model.dt, blit=True, repeat=True)
 # ani_3D.save('./pic/LIPM_3D.gif', writer='imagemagick', fps=30)
 
 bx = fig.add_subplot(spec[1], autoscale_on=False)
@@ -296,7 +264,7 @@ COM_pos_ani, = bx.plot(COM_pos_x[0], COM_pos_y[0], marker='o', markersize=6, col
 left_foot_pos_ani, = bx.plot([], [], 'o', markersize=10, color='b')
 right_foot_pos_ani, = bx.plot([], [], 'o', markersize=10, color='m')
 
-ani_2D = FuncAnimation(fig=fig, init_func=ani_2D_init, func=ani_2D_update, frames=range(1, data_len), interval=1.0/delta_t, blit=True, repeat=True)
+ani_2D = FuncAnimation(fig=fig, init_func=ani_2D_init, func=ani_2D_update, frames=range(1, data_len), interval=1.0/LIPM_model.dt, blit=True, repeat=True)
 # ani_2D.save('./pic/COM_trajectory.gif', fps=30)
 
 plt.show()
