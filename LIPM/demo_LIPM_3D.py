@@ -6,7 +6,7 @@ from LIPM_3D import LIPM3D
 
 class Ball:
     def __init__(self, size=10, shape='o'):
-        self.scatter, = ax.plot([], [], [], shape, markersize=size, animated=True)
+        self.scatter, = ax.plot([], [], [], shape, markersize=size, animated=False)
 
     def update(self, pos):
         # draw ball
@@ -14,7 +14,7 @@ class Ball:
 
 class Line:
     def __init__(self, size=1, color='g'):
-        self.line, = ax.plot([], [], [], linewidth=size, color=color, animated=True)
+        self.line, = ax.plot([], [], [], linewidth=size, color=color, animated=False)
 
     def update(self, pos):
         # draw line
@@ -25,7 +25,6 @@ class Line:
 class LIPM_3D_Animate():
     def __init__(self):
         self.origin = Ball(size=2, shape='ko')
-        self.COM = Ball(size=16, shape='ro')
         self.COM_trajectory = Line(size=1, color='g')
         self.COM_head = Ball(size=2, shape='ro')
 
@@ -34,6 +33,7 @@ class LIPM_3D_Animate():
 
         self.left_leg = Line(size=3, color='b')
         self.right_leg = Line(size=3, color='m')
+        self.COM = Ball(size=16, shape='ro')
 
 
     def update(self, COM_pos, COM_pos_trajectory, left_foot_pos, right_foot_pos):
@@ -116,8 +116,8 @@ def ani_2D_update(i):
     ani_text_COM_pos.set_text(COM_pos_str % (COM_pos_x[i], COM_pos_y[i]))
 
     # # automatic set the x, y view limitation 
-    # bx.set_xlim(-2.0 + COM_pos_x[i], 3.0 + COM_pos_x[i])
-    # bx.set_ylim(-0.8 + COM_pos_y[i], 0.8 + COM_pos_y[i])
+    bx.set_xlim(-2.0 + COM_pos_x[i], 3.0 + COM_pos_x[i])
+    bx.set_ylim(-0.8 + COM_pos_y[i], 0.8 + COM_pos_y[i])
 
     return [COM_pos_ani, COM_traj_ani, left_foot_pos_ani, right_foot_pos_ani, ani_text_COM_pos, bx]
    
@@ -244,7 +244,7 @@ ax.set_zlabel('z (m)')
 # view angles
 ax.view_init(20, -150)
 LIPM_3D_ani = LIPM_3D_Animate()
-ani_3D = FuncAnimation(fig, ani_3D_update, frames=range(1, data_len), init_func=ani_3D_init, interval=1.0/LIPM_model.dt, blit=True, repeat=True)
+ani_3D = FuncAnimation(fig, ani_3D_update, frames=range(1, data_len), init_func=ani_3D_init, interval=1.0/LIPM_model.dt, blit=False, repeat=True)
 # ani_3D.save('./pic/LIPM_3D.gif', writer='imagemagick', fps=30)
 
 bx = fig.add_subplot(spec[1], autoscale_on=False)
@@ -266,7 +266,7 @@ COM_pos_ani, = bx.plot(COM_pos_x[0], COM_pos_y[0], marker='o', markersize=6, col
 left_foot_pos_ani, = bx.plot([], [], 'o', markersize=10, color='b')
 right_foot_pos_ani, = bx.plot([], [], 'o', markersize=10, color='m')
 
-ani_2D = FuncAnimation(fig=fig, init_func=ani_2D_init, func=ani_2D_update, frames=range(1, data_len), interval=1.0/LIPM_model.dt, blit=True, repeat=True)
+ani_2D = FuncAnimation(fig=fig, init_func=ani_2D_init, func=ani_2D_update, frames=range(1, data_len), interval=1.0/LIPM_model.dt, blit=False, repeat=True)
 # ani_2D.save('./pic/COM_trajectory.gif', fps=30)
 
 plt.show()
