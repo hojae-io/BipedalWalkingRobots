@@ -122,11 +122,27 @@ def ani_2D_update(i):
     return [COM_pos_ani, COM_traj_ani, left_foot_pos_ani, right_foot_pos_ani, ani_text_COM_pos, bx]
    
 
+def COM_vel_2D_init():
+    COM_vel_x_ani.set_data(np.linspace(0, 1, 0), COM_vel_x[0:0])
+    COM_vel_y_ani.set_data(np.linspace(0, 1, 0), COM_vel_y[0:0])
+    return [COM_vel_x_ani, COM_vel_y_ani]
+
+def COM_vel_2D_update(i):
+    COM_vel_x_ani.set_data(np.linspace(0, i-1, i), COM_vel_x[0:i])
+    COM_vel_y_ani.set_data(np.linspace(0, i-1, i), COM_vel_y[0:i])
+
+    # # automatic set the time limitation 
+    # cx.set_xlim(0, i-1)
+    # cx.set_ylim(-1.0, 3.0)
+    return [COM_vel_x_ani, COM_vel_y_ani, cx]
+
 # %% ---------------------------------------------------------------- LIPM control
 print('\n--------- Program start from here ...')
 
 COM_pos_x = list()
 COM_pos_y = list()
+COM_vel_x = list()
+COM_vel_y = list()
 left_foot_pos_x = list()
 left_foot_pos_y = list()
 left_foot_pos_z = list()
@@ -138,7 +154,7 @@ right_foot_pos_z = list()
 # COM_pos_0 = [-0.4, 0.2, 1.0]
 # COM_v0 = [1.0, -0.01]
 COM_pos_0 = [0., 0., 1.0]
-COM_v0 = [2.0, 0.]
+COM_v0 = [1.0, 0.]
 
 left_foot_pos = [-0.2, 0.3, 0]
 right_foot_pos = [-0.2, -0.3, 0]
@@ -176,7 +192,7 @@ else:
     swing_foot_pos[:,1] = np.linspace(LIPM_model.left_foot_pos[1], left_foot_target_pos[1], swing_data_len)
     swing_foot_pos[1:swing_data_len-1, 2] = 0.1
 
-total_time = 30 # seconds
+total_time = 10 # seconds
 step_num = 0
 
 for i in range(1, int(total_time/LIPM_model.dt)):
@@ -193,6 +209,8 @@ for i in range(1, int(total_time/LIPM_model.dt)):
     # record data
     COM_pos_x.append(LIPM_model.x_t + LIPM_model.support_foot_pos[0])
     COM_pos_y.append(LIPM_model.y_t + LIPM_model.support_foot_pos[1])
+    COM_vel_x.append(LIPM_model.vx_t)
+    COM_vel_y.append(LIPM_model.vy_t)
     left_foot_pos_x.append(LIPM_model.left_foot_pos[0])
     left_foot_pos_y.append(LIPM_model.left_foot_pos[1])
     left_foot_pos_z.append(LIPM_model.left_foot_pos[2])
@@ -230,9 +248,9 @@ for i in range(1, int(total_time/LIPM_model.dt)):
 data_len = len(COM_pos_x)
 print('--------- plot')
 from matplotlib import gridspec
-fig = plt.figure(figsize=(8, 10))
-spec = gridspec.GridSpec(nrows=2, ncols=1, height_ratios=[2.5, 1])
-ax = fig.add_subplot(spec[0], projection ='3d')
+fig = plt.figure(figsize=(10, 10))
+spec = gridspec.GridSpec(nrows=2, ncols=2, height_ratios=[2.5, 1])
+ax = fig.add_subplot(spec[0,0], projection ='3d')
 # ax.set_aspect('equal') # bugs
 ax.set_xlim(-1.0, 4.0)
 ax.set_ylim(-2.0, 2.0)
@@ -247,7 +265,8 @@ LIPM_3D_ani = LIPM_3D_Animate()
 ani_3D = FuncAnimation(fig, ani_3D_update, frames=range(1, data_len), init_func=ani_3D_init, interval=1.0/LIPM_model.dt, blit=False, repeat=True)
 # ani_3D.save('./pic/LIPM_3D.gif', writer='imagemagick', fps=30)
 
-bx = fig.add_subplot(spec[1], autoscale_on=False)
+# Add 2D plot for COM trajectory
+bx = fig.add_subplot(spec[1,0], autoscale_on=False)
 bx.set_xlim(-0.5, 5.0)
 bx.set_ylim(-0.8, 0.8)
 bx.set_aspect('equal')
@@ -268,6 +287,25 @@ right_foot_pos_ani, = bx.plot([], [], 'o', markersize=10, color='m')
 
 ani_2D = FuncAnimation(fig=fig, init_func=ani_2D_init, func=ani_2D_update, frames=range(1, data_len), interval=1.0/LIPM_model.dt, blit=False, repeat=True)
 # ani_2D.save('./pic/COM_trajectory.gif', fps=30)
+
+# Add CoM velocity plot
+cx = fig.add_subplot(spec[0,1])
+""" draw CoM velocity animation """
+cx.set_xlim(0, total_time/LIPM_model.dt)
+cx.set_ylim(min(min(COM_vel_x), min(COM_vel_y))-0.1, max(max(COM_vel_x), max(COM_vel_y))+0.1)
+cx.set_xlabel('time (s)')
+cx.set_ylabel('CoM velocity (m/s)')
+cx.set_xticklabels(np.linspace(0, total_time, 6))
+cx.grid(ls='--')
+
+COM_vel_x_ani, = cx.plot([], [], color='k', label='CoM velocity x')
+COM_vel_y_ani, = cx.plot([], [], color='purple', label='CoM velocity y')
+cx.legend(loc='upper right')
+
+COM_vel_2D = FuncAnimation(fig=fig, init_func=COM_vel_2D_init, func=COM_vel_2D_update, frames=range(1, data_len), interval=1.0/LIPM_model.dt, blit=False, repeat=True)
+
+
+
 
 plt.show()
 print('---------  Program terminated')

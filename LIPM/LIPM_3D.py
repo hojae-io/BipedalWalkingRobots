@@ -86,7 +86,8 @@ class LIPM3D:
         offset_y = -b_y if self.support_leg == "left_leg" else b_y 
 
         TURN = True if step_num >= 5 else False
-        theta = -np.pi/2
+        TURN = False
+        theta = np.pi/2
         if TURN:
             old_offset_x = np.copy(offset_x)
             old_offset_y = np.copy(offset_y)
