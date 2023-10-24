@@ -130,11 +130,24 @@ def COM_vel_2D_init():
 def COM_vel_2D_update(i):
     COM_vel_x_ani.set_data(np.linspace(0, i-1, i), COM_vel_x[0:i])
     COM_vel_y_ani.set_data(np.linspace(0, i-1, i), COM_vel_y[0:i])
-
-    # # automatic set the time limitation 
-    # cx.set_xlim(0, i-1)
-    # cx.set_ylim(-1.0, 3.0)
+    COM_dvel_x_ani.set_data(np.linspace(0, i-1, i), COM_dvel_x[0:i])
+    COM_dvel_y_ani.set_data(np.linspace(0, i-1, i), COM_dvel_y[0:i])
     return [COM_vel_x_ani, COM_vel_y_ani, cx]
+
+def step_params_2D_init():
+    step_length_ani.set_data(np.linspace(0, 1, 0), step_length[0:0])
+    step_width_ani.set_data(np.linspace(0, 1, 0), step_width[0:0])
+    dstep_length_ani.set_data(np.linspace(0, 1, 0), dstep_length[0:0])
+    dstep_width_ani.set_data(np.linspace(0, 1, 0), dstep_width[0:0])
+    return [step_length_ani, step_width_ani]
+
+def step_params_2D_update(i):
+    step_length_ani.set_data(np.linspace(0, i-1, i), step_length[0:i])
+    step_width_ani.set_data(np.linspace(0, i-1, i), step_width[0:i])
+    dstep_length_ani.set_data(np.linspace(0, i-1, i), dstep_length[0:i])
+    dstep_width_ani.set_data(np.linspace(0, i-1, i), dstep_width[0:i])
+    return [step_length_ani, step_width_ani, dx]
+
 
 # %% ---------------------------------------------------------------- LIPM control
 print('\n--------- Program start from here ...')
@@ -143,12 +156,18 @@ COM_pos_x = list()
 COM_pos_y = list()
 COM_vel_x = list()
 COM_vel_y = list()
+COM_dvel_x = list()
+COM_dvel_y = list()
 left_foot_pos_x = list()
 left_foot_pos_y = list()
 left_foot_pos_z = list()
 right_foot_pos_x = list()
 right_foot_pos_y = list()
 right_foot_pos_z = list()
+step_length = list()
+dstep_length = list()
+step_width = list() 
+dstep_width = list()
 
 # Initialize the 3D LIPM (with initial COM position, velocity and foot position)
 # COM_pos_0 = [-0.4, 0.2, 1.0]
@@ -158,8 +177,10 @@ COM_v0 = [1.0, 0.]
 
 left_foot_pos = [-0.2, 0.3, 0]
 right_foot_pos = [-0.2, -0.3, 0]
+support_foot_pos = np.array(left_foot_pos)
+prev_support_foot_pos = np.array(left_foot_pos)
 
-LIPM_model = LIPM3D(dt=0.02, T=0.2, s_d=0.5, w_d=0.4, support_leg='left_leg')
+LIPM_model = LIPM3D(dt=0.02, T=0.2, s_d=0.6, w_d=0.4, support_leg='left_leg')
 # LIPM_model = LIPM3D(dt=0.02, T=0.5, support_leg='right_leg')
 LIPM_model.initializeModel(COM_pos_0, left_foot_pos, right_foot_pos)
 
@@ -178,7 +199,7 @@ swing_foot_pos = np.zeros((swing_data_len, 3))
 j = 0
 
 # Calculate the next step locations
-LIPM_model.calculateFootLocationForNextStepXcoM(step_num=1)
+LIPM_model.calculateFootLocationForNextStepXcoM()
 
 # Calculate the foot positions for swing phase
 if LIPM_model.support_leg == 'left_leg':
@@ -192,8 +213,12 @@ else:
     swing_foot_pos[:,1] = np.linspace(LIPM_model.left_foot_pos[1], left_foot_target_pos[1], swing_data_len)
     swing_foot_pos[1:swing_data_len-1, 2] = 0.1
 
+# Initialize parameters
 total_time = 10 # seconds
 step_num = 0
+step_to_turn = 10 # 0, 1, 2, 3, 4, 5
+turn = np.pi/1.5 # 0, np.pi/2, np.pi, 3*np.pi/2
+theta = 0
 
 for i in range(1, int(total_time/LIPM_model.dt)):
 
@@ -211,6 +236,8 @@ for i in range(1, int(total_time/LIPM_model.dt)):
     COM_pos_y.append(LIPM_model.y_t + LIPM_model.support_foot_pos[1])
     COM_vel_x.append(LIPM_model.vx_t)
     COM_vel_y.append(LIPM_model.vy_t)
+    COM_dvel_x.append(np.cos(theta)*LIPM_model.s_d / LIPM_model.T)
+    COM_dvel_y.append(np.sin(theta)*LIPM_model.s_d / LIPM_model.T)
     left_foot_pos_x.append(LIPM_model.left_foot_pos[0])
     left_foot_pos_y.append(LIPM_model.left_foot_pos[1])
     left_foot_pos_z.append(LIPM_model.left_foot_pos[2])
@@ -218,17 +245,31 @@ for i in range(1, int(total_time/LIPM_model.dt)):
     right_foot_pos_y.append(LIPM_model.right_foot_pos[1])
     right_foot_pos_z.append(LIPM_model.right_foot_pos[2])
 
+    rsupport_foot_pos_x = np.cos(theta)*support_foot_pos[0] + np.sin(theta)*support_foot_pos[1]
+    rsupport_foot_pos_y = -np.sin(theta)*support_foot_pos[0] + np.cos(theta)*support_foot_pos[1]
+    rprev_support_foot_pos_x = np.cos(theta)*prev_support_foot_pos[0] + np.sin(theta)*prev_support_foot_pos[1]
+    rprev_support_foot_pos_y = -np.sin(theta)*prev_support_foot_pos[0] + np.cos(theta)*prev_support_foot_pos[1]
+    
+    step_length.append(np.abs(rsupport_foot_pos_x - rprev_support_foot_pos_x))
+    dstep_length.append(LIPM_model.s_d)
+    step_width.append(np.abs(rsupport_foot_pos_y - rprev_support_foot_pos_y))
+    dstep_width.append(LIPM_model.w_d)
 
     # switch the support leg
     if (i % swing_data_len == 0):
         j = 0
 
+        prev_support_foot_pos = support_foot_pos
         # Switch the support leg / Update current body state (self.x_0, self.y_0, self.vx_0, self.vy_0)
         LIPM_model.switchSupportLeg() 
         step_num += 1
 
+        support_foot_pos = np.array(LIPM_model.support_foot_pos)
+        if step_num >= step_to_turn:
+            theta = turn
+
         # Calculate the next step locations
-        LIPM_model.calculateFootLocationForNextStepXcoM(step_num)
+        LIPM_model.calculateFootLocationForNextStepXcoM(theta)
 
         # calculate the foot positions for swing phase
         if LIPM_model.support_leg == 'left_leg':
@@ -241,7 +282,6 @@ for i in range(1, int(total_time/LIPM_model.dt)):
             swing_foot_pos[:,0] = np.linspace(LIPM_model.left_foot_pos[0], left_foot_target_pos[0], swing_data_len)
             swing_foot_pos[:,1] = np.linspace(LIPM_model.left_foot_pos[1], left_foot_target_pos[1], swing_data_len)
             swing_foot_pos[1:swing_data_len-1, 2] = 0.1
-
 
 
 # ------------------------------------------------- animation plot
@@ -290,7 +330,6 @@ ani_2D = FuncAnimation(fig=fig, init_func=ani_2D_init, func=ani_2D_update, frame
 
 # Add CoM velocity plot
 cx = fig.add_subplot(spec[0,1])
-""" draw CoM velocity animation """
 cx.set_xlim(0, total_time/LIPM_model.dt)
 cx.set_ylim(min(min(COM_vel_x), min(COM_vel_y))-0.1, max(max(COM_vel_x), max(COM_vel_y))+0.1)
 cx.set_xlabel('time (s)')
@@ -299,12 +338,29 @@ cx.set_xticklabels(np.linspace(0, total_time, 6))
 cx.grid(ls='--')
 
 COM_vel_x_ani, = cx.plot([], [], color='k', label='CoM velocity x')
+COM_dvel_x_ani, = cx.plot([], [], color='k', linestyle='--', label='desired CoM velocity x')
 COM_vel_y_ani, = cx.plot([], [], color='purple', label='CoM velocity y')
+COM_dvel_y_ani, = cx.plot([], [], color='purple', linestyle='--', label='desired CoM velocity y')
 cx.legend(loc='upper right')
 
 COM_vel_2D = FuncAnimation(fig=fig, init_func=COM_vel_2D_init, func=COM_vel_2D_update, frames=range(1, data_len), interval=1.0/LIPM_model.dt, blit=False, repeat=True)
 
+# Add analysis plot
+dx = fig.add_subplot(spec[1,1])
+dx.set_xlim(0, total_time/LIPM_model.dt)
+dx.set_ylim(-0.5, 1.5)
+dx.set_xlabel('time (s)')
+dx.set_ylabel('scale')
+dx.set_xticklabels(np.linspace(0, total_time, 6))
+dx.grid(ls='--')
 
+step_length_ani, = dx.plot([], [], color='gray', label='step length')
+dstep_length_ani, = dx.plot([], [], color='gray', linestyle='--', label='desired step length')
+step_width_ani, = dx.plot([], [], color='cyan', label='step width')
+dstep_width_ani, = dx.plot([], [], color='cyan', linestyle='--', label='desired step width')
+dx.legend(loc='upper right')
+
+step_params_2D = FuncAnimation(fig=fig, init_func=step_params_2D_init, func=step_params_2D_update, frames=range(1, data_len), interval=1.0/LIPM_model.dt, blit=False, repeat=True)
 
 
 plt.show()
