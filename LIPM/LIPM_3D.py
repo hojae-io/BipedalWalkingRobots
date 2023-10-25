@@ -82,15 +82,6 @@ class LIPM3D:
         b_x = self.s_d / (np.exp(self.w_0*self.T_d) - 1)
         b_y = self.w_d / (np.exp(self.w_0*self.T_d) + 1)
 
-        # offset_x = -b_x
-        # offset_y = -b_y if self.support_leg == "left_leg" else b_y 
-
-        # if step_num >= step_to_turn:
-        #     old_offset_x = np.copy(offset_x)
-        #     old_offset_y = np.copy(offset_y)
-        #     offset_x = np.cos(theta) * old_offset_x - np.sin(theta) * old_offset_y
-        #     offset_y = np.sin(theta) * old_offset_x + np.cos(theta) * old_offset_y
-
         original_offset_x = -b_x
         original_offset_y = -b_y if self.support_leg == "left_leg" else b_y 
         offset_x = np.cos(theta) * original_offset_x - np.sin(theta) * original_offset_y

@@ -217,9 +217,12 @@ else:
 total_time = 10 # seconds
 step_num = 0
 
-step_to_turn = 10 # 0, 1, 2, 3, 4, 5
-turn = np.pi/2 # 0, np.pi/2, np.pi, 3*np.pi/2
 theta = 0
+
+step_to_cmdv = [10, 20, 30]
+COM_dvel_list = np.array([[1.0, 0.0],[0.0, 1.0],[2.0, 2.0],[-4.0, 0.]])
+                        
+COM_dvel = COM_dvel_list[0]
 
 for i in range(1, int(total_time/LIPM_model.dt)):
 
@@ -237,8 +240,8 @@ for i in range(1, int(total_time/LIPM_model.dt)):
     COM_pos_y.append(LIPM_model.y_t + LIPM_model.support_foot_pos[1])
     COM_vel_x.append(LIPM_model.vx_t)
     COM_vel_y.append(LIPM_model.vy_t)
-    COM_dvel_x.append(np.cos(theta)*LIPM_model.s_d / LIPM_model.T)
-    COM_dvel_y.append(np.sin(theta)*LIPM_model.s_d / LIPM_model.T)
+    COM_dvel_x.append(COM_dvel[0])
+    COM_dvel_y.append(COM_dvel[1])
     left_foot_pos_x.append(LIPM_model.left_foot_pos[0])
     left_foot_pos_y.append(LIPM_model.left_foot_pos[1])
     left_foot_pos_z.append(LIPM_model.left_foot_pos[2])
@@ -267,8 +270,22 @@ for i in range(1, int(total_time/LIPM_model.dt)):
 
         support_foot_pos = np.array(LIPM_model.support_foot_pos)
 
-        if step_num >= step_to_turn:
-            theta = turn
+        if step_num >= step_to_cmdv[2]:
+            theta = np.arctan2(COM_dvel_list[3,1],COM_dvel_list[3,0])
+            LIPM_model.s_d = np.linalg.norm(COM_dvel_list[3]) * LIPM_model.T
+            COM_dvel = COM_dvel_list[3]
+        elif step_num >= step_to_cmdv[1]:
+            theta = np.arctan2(COM_dvel_list[2,1],COM_dvel_list[2,0])
+            LIPM_model.s_d = np.linalg.norm(COM_dvel_list[2]) * LIPM_model.T
+            COM_dvel = COM_dvel_list[2]
+        elif step_num >= step_to_cmdv[0]:
+            theta = np.arctan2(COM_dvel_list[1,1],COM_dvel_list[1,0])
+            LIPM_model.s_d = np.linalg.norm(COM_dvel_list[1]) * LIPM_model.T
+            COM_dvel = COM_dvel_list[1]
+        else:
+            theta = np.arctan2(COM_dvel_list[0,1],COM_dvel_list[0,0])
+            LIPM_model.s_d = np.linalg.norm(COM_dvel_list[0]) * LIPM_model.T
+            COM_dvel = COM_dvel_list[0]
 
         # Calculate the next step locations
         LIPM_model.calculateFootLocationForNextStepXcoM(theta)
@@ -318,6 +335,7 @@ bx.grid(ls='--')
 
 COM_pos_str = 'COM = (%.2f, %.2f)'
 ani_text_COM_pos = bx.text(0.05, 0.9, '', transform=bx.transAxes)
+
 
 original_ani, = bx.plot(0, 0, marker='o', markersize=2, color='k')
 left_foot_pos_ani, = bx.plot([], [], 'o', lw=2, color='b')
