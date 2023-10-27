@@ -51,25 +51,24 @@ class LIPM3D:
             self.support_foot_pos = right_foot_pos
 
         self.zc = self.COM_pos[2]
-        self.T_c = np.sqrt(self.zc / 9.81) # set gravity parameter g = 9.81
         self.w_0 = np.sqrt(9.81 / self.zc)
     
     def step(self):
         self.t += self.dt
         t = self.t
 
-        self.x_t = self.x_0*np.cosh(t/self.T_c) + self.T_c*self.vx_0*np.sinh(t/self.T_c)
-        self.vx_t = self.x_0/self.T_c*np.sinh(t/self.T_c) + self.vx_0*np.cosh(t/self.T_c)
+        self.x_t = self.x_0*np.cosh(t*self.w_0) + self.vx_0*np.sinh(t*self.w_0)/self.w_0
+        self.vx_t = self.x_0*self.w_0*np.sinh(t*self.w_0) + self.vx_0*np.cosh(t*self.w_0)
 
-        self.y_t = self.y_0*np.cosh(t/self.T_c) + self.T_c*self.vy_0*np.sinh(t/self.T_c)
-        self.vy_t = self.y_0/self.T_c*np.sinh(t/self.T_c) + self.vy_0*np.cosh(t/self.T_c)
+        self.y_t = self.y_0*np.cosh(t*self.w_0) + self.vy_0*np.sinh(t*self.w_0)/self.w_0
+        self.vy_t = self.y_0*self.w_0*np.sinh(t*self.w_0) + self.vy_0*np.cosh(t*self.w_0)
 
     def calculateXfVf(self):
-        x_f = self.x_0*np.cosh(self.T/self.T_c) + self.T_c*self.vx_0*np.sinh(self.T/self.T_c)
-        vx_f = self.x_0/self.T_c*np.sinh(self.T/self.T_c) + self.vx_0*np.cosh(self.T/self.T_c)
+        x_f = self.x_0*np.cosh(self.T*self.w_0) + self.vx_0*np.sinh(self.T*self.w_0)/self.w_0
+        vx_f = self.x_0*self.w_0*np.sinh(self.T*self.w_0) + self.vx_0*np.cosh(self.T*self.w_0)
 
-        y_f = self.y_0*np.cosh(self.T/self.T_c) + self.T_c*self.vy_0*np.sinh(self.T/self.T_c)
-        vy_f = self.y_0/self.T_c*np.sinh(self.T/self.T_c) + self.vy_0*np.cosh(self.T/self.T_c)
+        y_f = self.y_0*np.cosh(self.T*self.w_0) + self.vy_0*np.sinh(self.T*self.w_0)/self.w_0
+        vy_f = self.y_0*self.w_0*np.sinh(self.T*self.w_0) + self.vy_0*np.cosh(self.T*self.w_0)
 
         return x_f, vx_f, y_f, vy_f
 
