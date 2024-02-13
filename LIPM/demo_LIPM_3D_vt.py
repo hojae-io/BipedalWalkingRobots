@@ -199,7 +199,8 @@ swing_foot_pos = np.zeros((swing_data_len, 3))
 j = 0
 
 # Calculate the next step locations
-LIPM_model.calculateFootLocationForNextStepXcoM()
+LIPM_model.calculateFootLocationForNextStepXcoMWorld()
+# LIPM_model.calculateFootLocationForNextStepXcoMBase()
 
 # Calculate the foot positions for swing phase
 if LIPM_model.support_leg == 'left_leg':
@@ -220,7 +221,7 @@ step_num = 0
 theta = 0
 
 step_to_cmdv = [10, 20, 30]
-COM_dvel_list = np.array([[1.0, 0.0],[0.0, 1.0],[2.0, 2.0],[-4.0, 0.]])
+COM_dvel_list = np.array([[1.0, 0.0],[0.0, 50.0],[2.0, 2.0],[-4.0, 0.]])
                         
 COM_dvel = COM_dvel_list[0]
 
@@ -288,7 +289,8 @@ for i in range(1, int(total_time/LIPM_model.dt)):
             COM_dvel = COM_dvel_list[0]
 
         # Calculate the next step locations
-        LIPM_model.calculateFootLocationForNextStepXcoM(theta)
+        LIPM_model.calculateFootLocationForNextStepXcoMWorld(theta)
+        # LIPM_model.calculateFootLocationForNextStepXcoMBase(theta)
 
         # calculate the foot positions for swing phase
         if LIPM_model.support_leg == 'left_leg':

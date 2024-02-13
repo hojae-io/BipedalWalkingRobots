@@ -17,6 +17,8 @@ class LIPM3D:
         self.s_d = s_d # desired step length
         self.w_d = w_d # desired step width
 
+        self.eICP_x = 0 # ICP location x
+        self.eICP_y = 0 # ICP location y
         self.u_x = 0 # step location x
         self.u_y = 0 # step location y
 
@@ -72,12 +74,12 @@ class LIPM3D:
 
         return x_f, vx_f, y_f, vy_f
 
-    def calculateFootLocationForNextStepXcoM(self, theta=0.):
+    def calculateFootLocationForNextStepXcoMWorld(self, theta=0.):
         x_f, vx_f, y_f, vy_f = self.calculateXfVf()
         x_f_world = x_f + self.support_foot_pos[0]
         y_f_world = y_f + self.support_foot_pos[1]
-        ICP_x = x_f_world + vx_f/self.w_0
-        ICP_y = y_f_world + vy_f/self.w_0
+        self.eICP_x = x_f_world + vx_f/self.w_0
+        self.eICP_y = y_f_world + vy_f/self.w_0
         b_x = self.s_d / (np.exp(self.w_0*self.T_d) - 1)
         b_y = self.w_d / (np.exp(self.w_0*self.T_d) + 1)
 
@@ -86,8 +88,25 @@ class LIPM3D:
         offset_x = np.cos(theta) * original_offset_x - np.sin(theta) * original_offset_y
         offset_y = np.sin(theta) * original_offset_x + np.cos(theta) * original_offset_y
 
-        self.u_x = ICP_x + offset_x
-        self.u_y = ICP_y + offset_y
+        self.u_x = self.eICP_x + offset_x
+        self.u_y = self.eICP_y + offset_y
+
+    def calculateFootLocationForNextStepXcoMBase(self, theta=0.):
+        x_f, vx_f, y_f, vy_f = self.calculateXfVf()
+        x_f_world = x_f + self.support_foot_pos[0]
+        y_f_world = y_f + self.support_foot_pos[1]
+        self.eICP_x = x_f_world + vx_f/self.w_0
+        self.eICP_y = y_f_world + vy_f/self.w_0
+        b_x = self.s_d / (np.exp(self.w_0*self.T_d) - 1)
+        b_y = self.w_d / (np.exp(self.w_0*self.T_d) + 1)
+
+        original_offset_x = -b_x
+        original_offset_y = -b_y if self.support_leg == "left_leg" else b_y 
+        offset_x = np.cos(theta) * original_offset_x - np.sin(theta) * original_offset_y
+        offset_y = np.sin(theta) * original_offset_x - np.cos(theta) * original_offset_y
+
+        self.u_x = self.eICP_x + offset_x
+        self.u_y = self.eICP_y + offset_y
 
     def switchSupportLeg(self):
         if self.support_leg == 'left_leg':
