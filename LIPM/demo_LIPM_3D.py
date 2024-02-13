@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
+import os
 
 from LIPM_3D import LIPM3D
 
@@ -180,7 +181,7 @@ right_foot_pos = [-0.2, -0.3, 0]
 support_foot_pos = np.array(left_foot_pos)
 prev_support_foot_pos = np.array(left_foot_pos)
 
-LIPM_model = LIPM3D(dt=0.02, T=0.2, s_d=0.6, w_d=0.4, support_leg='left_leg')
+LIPM_model = LIPM3D(dt=0.02, T=0.34, s_d=0.6, w_d=0.4, support_leg='left_leg')
 # LIPM_model = LIPM3D(dt=0.02, T=0.5, support_leg='right_leg')
 LIPM_model.initializeModel(COM_pos_0, left_foot_pos, right_foot_pos)
 
@@ -214,11 +215,11 @@ else:
     swing_foot_pos[1:swing_data_len-1, 2] = 0.1
 
 # Initialize parameters
-total_time = 10 # seconds
+total_time = 5 # seconds
 step_num = 0
 
-step_to_turn = 10 # 0, 1, 2, 3, 4, 5
-turn = np.pi/2 # 0, np.pi/2, np.pi, 3*np.pi/2
+step_to_turn = 5 # 0, 1, 2, 3, 4, 5
+turn = 0 # 0, np.pi/2, np.pi, 3*np.pi/2
 theta = 0
 
 for i in range(1, int(total_time/LIPM_model.dt)):
@@ -304,8 +305,7 @@ ax.set_zlabel('z (m)')
 # view angles
 ax.view_init(20, -150)
 LIPM_3D_ani = LIPM_3D_Animate()
-ani_3D = FuncAnimation(fig, ani_3D_update, frames=range(1, data_len), init_func=ani_3D_init, interval=1.0/LIPM_model.dt, blit=False, repeat=True)
-# ani_3D.save('./pic/LIPM_3D.gif', writer='imagemagick', fps=30)
+# ani_3D = FuncAnimation(fig, ani_3D_update, frames=range(1, data_len), init_func=ani_3D_init, interval=1.0/LIPM_model.dt, blit=False, repeat=True)
 
 # Add 2D plot for COM trajectory
 bx = fig.add_subplot(spec[1,0], autoscale_on=False)
@@ -326,8 +326,7 @@ COM_pos_ani, = bx.plot(COM_pos_x[0], COM_pos_y[0], marker='o', markersize=6, col
 left_foot_pos_ani, = bx.plot([], [], 'o', markersize=10, color='b')
 right_foot_pos_ani, = bx.plot([], [], 'o', markersize=10, color='m')
 
-ani_2D = FuncAnimation(fig=fig, init_func=ani_2D_init, func=ani_2D_update, frames=range(1, data_len), interval=1.0/LIPM_model.dt, blit=False, repeat=True)
-# ani_2D.save('./pic/COM_trajectory.gif', fps=30)
+# ani_2D = FuncAnimation(fig=fig, init_func=ani_2D_init, func=ani_2D_update, frames=range(1, data_len), interval=1.0/LIPM_model.dt, blit=False, repeat=True)
 
 # Add CoM velocity plot
 cx = fig.add_subplot(spec[0,1])
@@ -344,7 +343,7 @@ COM_vel_y_ani, = cx.plot([], [], color='purple', label='CoM velocity y')
 COM_dvel_y_ani, = cx.plot([], [], color='purple', linestyle='--', label='desired CoM velocity y')
 cx.legend(loc='upper right')
 
-COM_vel_2D = FuncAnimation(fig=fig, init_func=COM_vel_2D_init, func=COM_vel_2D_update, frames=range(1, data_len), interval=1.0/LIPM_model.dt, blit=False, repeat=True)
+# COM_vel_2D = FuncAnimation(fig=fig, init_func=COM_vel_2D_init, func=COM_vel_2D_update, frames=range(1, data_len), interval=1.0/LIPM_model.dt, blit=False, repeat=True)
 
 # Add analysis plot
 dx = fig.add_subplot(spec[1,1])
@@ -361,8 +360,31 @@ step_width_ani, = dx.plot([], [], color='cyan', label='step width')
 dstep_width_ani, = dx.plot([], [], color='cyan', linestyle='--', label='desired step width')
 dx.legend(loc='upper right')
 
-step_params_2D = FuncAnimation(fig=fig, init_func=step_params_2D_init, func=step_params_2D_update, frames=range(1, data_len), interval=1.0/LIPM_model.dt, blit=False, repeat=True)
+# step_params_2D = FuncAnimation(fig=fig, init_func=step_params_2D_init, func=step_params_2D_update, frames=range(1, data_len), interval=1.0/LIPM_model.dt, blit=False, repeat=True)
 
+# * Combine all the animations
+def _init_func():
+    artist1 = ani_3D_init()
+    artist2 = ani_2D_init()
+    artist3 = COM_vel_2D_init()
+    artist4 = step_params_2D_init()
+    return artist1 + artist2 + artist3 + artist4
 
-plt.show()
+def _update_func(i):
+    artist1 = ani_3D_update(i)
+    artist2 = ani_2D_update(i)
+    artist3 = COM_vel_2D_update(i)
+    artist4 = step_params_2D_update(i)
+    return artist1 + artist2 + artist3 + artist4
+
+anim = FuncAnimation(fig=fig, init_func=_init_func, func=_update_func, frames=range(1, data_len), interval=1.0/LIPM_model.dt, blit=False, repeat=False)
+
+# * Save the animation
+print("--------- Save the animation")
+filepath = os.path.join(os.getcwd(), "LIPM_original.mp4")
+# COM_vel_2D.save(filepath, fps=self.fps, extra_args=['-vcodec', 'libx264'])
+# step_params_2D.save(filepath, fps=self.fps, extra_args=['-vcodec', 'libx264'])
+anim.save(filepath, fps=1.0/LIPM_model.dt, extra_args=['-vcodec', 'libx264'])
+
+# plt.show()
 print('---------  Program terminated')
